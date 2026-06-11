@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">yobidashi</string>
+    <string name="notification_channel_name">Listener</string>
+    <string name="notification_listening">Listening for ntfy audio</string>
+</resources>
