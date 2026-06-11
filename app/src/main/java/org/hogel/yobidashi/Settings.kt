@@ -2,12 +2,12 @@ package org.hogel.yobidashi
 
 import android.content.Context
 
-data class Settings(val serverUrl: String, val accessToken: String) {
-    // Only attach the token to attachment URLs on the configured server, so it
-    // never leaks to other servers the ntfy app is subscribed to.
+data class Settings(val serverUrl: String, val authorization: String) {
+    // Only attach the Authorization header to attachment URLs on the configured
+    // server, so credentials never leak to other hosts.
     fun authHeaders(url: String): Map<String, String> =
-        if (serverUrl.isNotEmpty() && accessToken.isNotEmpty() && url.startsWith(serverUrl)) {
-            mapOf("Authorization" to "Bearer $accessToken")
+        if (serverUrl.isNotEmpty() && authorization.isNotEmpty() && url.startsWith(serverUrl)) {
+            mapOf("Authorization" to authorization)
         } else {
             emptyMap()
         }
@@ -19,14 +19,14 @@ data class Settings(val serverUrl: String, val accessToken: String) {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             return Settings(
                 serverUrl = prefs.getString("server_url", "") ?: "",
-                accessToken = prefs.getString("access_token", "") ?: "",
+                authorization = prefs.getString("authorization", "") ?: "",
             )
         }
 
         fun save(context: Context, settings: Settings) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString("server_url", settings.serverUrl.trim().trimEnd('/'))
-                .putString("access_token", settings.accessToken.trim())
+                .putString("authorization", settings.authorization.trim())
                 .apply()
         }
     }

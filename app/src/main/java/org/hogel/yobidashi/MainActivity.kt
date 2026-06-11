@@ -106,26 +106,26 @@ private fun SettingsSection() {
     val context = LocalContext.current
     val saved = remember { Settings.load(context) }
     var serverUrl by remember { mutableStateOf(saved.serverUrl) }
-    var accessToken by remember { mutableStateOf(saved.accessToken) }
+    var authorization by remember { mutableStateOf(saved.authorization) }
 
     OutlinedTextField(
         value = serverUrl,
         onValueChange = { serverUrl = it },
-        label = { Text("ntfy server URL (for protected attachments)") },
-        placeholder = { Text("https://ntfy.example.com") },
+        label = { Text("Protected audio server URL") },
+        placeholder = { Text("https://audio.example.com") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedTextField(
-        value = accessToken,
-        onValueChange = { accessToken = it },
-        label = { Text("Access token") },
-        placeholder = { Text("tk_...") },
+        value = authorization,
+        onValueChange = { authorization = it },
+        label = { Text("Authorization header") },
+        placeholder = { Text("Basic dXNlcjpwYXNz / Bearer tk_...") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedButton(onClick = {
-        Settings.save(context, Settings(serverUrl, accessToken))
+        Settings.save(context, Settings(serverUrl, authorization))
         EventLog.add("settings saved")
     }) {
         Text("Save")
