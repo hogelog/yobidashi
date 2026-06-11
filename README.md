@@ -17,9 +17,10 @@ implicit `io.heckel.ntfy.MESSAGE_RECEIVED` intent. This app:
 1. Runs a minimal foreground service that dynamically registers a receiver for that
    intent (manifest-declared receivers cannot receive it due to the implicit broadcast
    restriction since API 26).
-2. On receive, streams `attachment_url` with MediaPlayer when the attachment is audio
-   (by MIME type or file extension). Playback runs inside the service, so it is not
-   bound by the receiver's execution time limit.
+2. On receive, downloads `attachment_url` and plays it with MediaPlayer when the
+   attachment is audio (by MIME type or file extension). Downloads are cached on disk
+   per URL (up to 50 files, LRU), so repeated URLs and replays from the log play
+   without re-downloading.
 
 No network or subscription code of its own — ntfy is the entire delivery
 infrastructure.

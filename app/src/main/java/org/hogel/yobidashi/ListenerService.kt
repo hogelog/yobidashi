@@ -11,11 +11,17 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.net.Uri
 import android.os.IBinder
 import android.os.PowerManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 class ListenerService : Service() {
     companion object {
@@ -30,7 +36,9 @@ class ListenerService : Service() {
         val running: StateFlow<Boolean> = mutableRunning
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var player: MediaPlayer? = null
+    private var playRequest = 0
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -77,6 +85,7 @@ class ListenerService : Service() {
 
     override fun onDestroy() {
         unregisterReceiver(receiver)
+        scope.cancel()
         stopPlayer()
         mutableRunning.value = false
         EventLog.add("listener stopped")
@@ -86,7 +95,25 @@ class ListenerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun play(url: String) {
+        val request = ++playRequest
         stopPlayer()
+        scope.launch {
+            val file = AudioCache.get(this@ListenerService, url)
+                ?: withContext(Dispatchers.IO) {
+                    AudioCache.download(
+                        this@ListenerService,
+                        url,
+                        Settings.load(this@ListenerService).headersFor(url),
+                    )
+                }
+                ?: return@launch
+            if (request == playRequest) {
+                startPlayer(file)
+            }
+        }
+    }
+
+    private fun startPlayer(file: File) {
         player = MediaPlayer().apply {
             setAudioAttributes(
                 AudioAttributes.Builder()
@@ -95,11 +122,7 @@ class ListenerService : Service() {
                     .build()
             )
             setWakeMode(this@ListenerService, PowerManager.PARTIAL_WAKE_LOCK)
-            setDataSource(
-                this@ListenerService,
-                Uri.parse(url),
-                Settings.load(this@ListenerService).headersFor(url),
-            )
+            setDataSource(file.path)
             setOnPreparedListener { it.start() }
             setOnCompletionListener { stopPlayer() }
             setOnErrorListener { _, what, extra ->
