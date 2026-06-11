@@ -32,6 +32,9 @@ infrastructure.
   but ntfy's own notification sound won't double up with playback.
 - Attachments on ntfy.sh expire after a few hours and are capped at ~15 MB; the app
   plays immediately on receive. Self-host ntfy to lift the limits.
+- On an access-controlled self-hosted server, attachment downloads under `/file/` also
+  require auth. Set the server URL and an [access token](https://docs.ntfy.sh/config/#access-tokens)
+  in the app; it sends `Authorization: Bearer` only for attachment URLs on that server.
 - Playback uses the media volume stream.
 
 ## Install

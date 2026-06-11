@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.IBinder
 import android.os.PowerManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,7 +83,11 @@ class ListenerService : Service() {
                     .build()
             )
             setWakeMode(this@ListenerService, PowerManager.PARTIAL_WAKE_LOCK)
-            setDataSource(url)
+            setDataSource(
+                this@ListenerService,
+                Uri.parse(url),
+                Settings.load(this@ListenerService).authHeaders(url),
+            )
             setOnPreparedListener { it.start() }
             setOnCompletionListener { stopPlayer() }
             setOnErrorListener { _, what, extra ->

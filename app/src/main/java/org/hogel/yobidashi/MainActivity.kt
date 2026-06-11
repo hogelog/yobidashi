@@ -19,10 +19,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -89,9 +94,41 @@ private fun MainScreen(onStart: () -> Unit, onStop: () -> Unit) {
                     Text(if (running) "Stop" else "Start")
                 }
             }
+            SettingsSection()
             HorizontalDivider()
             EventList(events)
         }
+    }
+}
+
+@Composable
+private fun SettingsSection() {
+    val context = LocalContext.current
+    val saved = remember { Settings.load(context) }
+    var serverUrl by remember { mutableStateOf(saved.serverUrl) }
+    var accessToken by remember { mutableStateOf(saved.accessToken) }
+
+    OutlinedTextField(
+        value = serverUrl,
+        onValueChange = { serverUrl = it },
+        label = { Text("ntfy server URL (for protected attachments)") },
+        placeholder = { Text("https://ntfy.example.com") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = accessToken,
+        onValueChange = { accessToken = it },
+        label = { Text("Access token") },
+        placeholder = { Text("tk_...") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedButton(onClick = {
+        Settings.save(context, Settings(serverUrl, accessToken))
+        EventLog.add("settings saved")
+    }) {
+        Text("Save")
     }
 }
 
