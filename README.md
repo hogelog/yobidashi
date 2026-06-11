@@ -1,4 +1,4 @@
-# ntfy-sound
+# yobidashi
 
 Android app that plays arbitrary audio pushed via [ntfy](https://ntfy.sh).
 
