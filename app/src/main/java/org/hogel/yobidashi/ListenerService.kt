@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 class ListenerService : Service() {
     companion object {
         const val NTFY_MESSAGE_RECEIVED = "io.heckel.ntfy.MESSAGE_RECEIVED"
+        const val ACTION_PLAY = "org.hogel.yobidashi.PLAY"
+        const val EXTRA_URL = "url"
         private const val CHANNEL_ID = "listener"
         private const val NOTIFICATION_ID = 1
         private val AUDIO_EXTENSIONS = setOf("mp3", "ogg", "oga", "opus", "m4a", "aac", "wav", "flac")
@@ -44,7 +46,12 @@ class ListenerService : Service() {
                 EventLog.add("$topic: $name is not audio, ignored")
                 return
             }
-            EventLog.add("$topic: playing $name")
+            val settings = Settings.load(context)
+            if (!AudioOutputs.autoPlayAllowed(context, settings.allowedOutputs)) {
+                EventLog.add("$topic: $name (no allowed output, tap to play)", url)
+                return
+            }
+            EventLog.add("$topic: playing $name", url)
             play(url)
         }
     }
@@ -61,7 +68,12 @@ class ListenerService : Service() {
         EventLog.add("listener started")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_PLAY) {
+            intent.getStringExtra(EXTRA_URL)?.let { play(it) }
+        }
+        return START_STICKY
+    }
 
     override fun onDestroy() {
         unregisterReceiver(receiver)
@@ -86,7 +98,7 @@ class ListenerService : Service() {
             setDataSource(
                 this@ListenerService,
                 Uri.parse(url),
-                Settings.load(this@ListenerService).authHeaders(url),
+                Settings.load(this@ListenerService).headersFor(url),
             )
             setOnPreparedListener { it.start() }
             setOnCompletionListener { stopPlayer() }

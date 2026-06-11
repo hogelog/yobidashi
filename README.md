@@ -35,10 +35,13 @@ infrastructure.
 - To keep audio off the public ntfy server entirely, host it on an access-restricted
   server and publish only its URL with
   [`X-Attach`](https://docs.ntfy.sh/publish/#attach-file-from-a-url) — ntfy passes the
-  URL through without downloading it. Set the server URL and an `Authorization` header
-  value (`Basic ...` / `Bearer ...`) in the app; it is sent only for attachment URLs on
-  that server. The same settings cover `/file/` attachments on an access-controlled
-  self-hosted ntfy.
+  URL through without downloading it. Set the server URL and request headers (one
+  `Name: value` per line, e.g. Basic auth and Cloudflare Access service token headers)
+  in the app; they are sent only for attachment URLs on that server.
+- Auto-play can be limited to specific audio outputs: check devices in the list
+  (populated from currently connected outputs). With none checked, every message
+  auto-plays. Messages that arrive without an allowed output connected stay in the
+  event log; tap a log entry to play it manually.
 - Playback uses the media volume stream.
 
 ## Install

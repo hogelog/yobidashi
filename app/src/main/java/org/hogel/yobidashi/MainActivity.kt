@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,12 +18,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +49,7 @@ class MainActivity : ComponentActivity() {
                 MainScreen(
                     onStart = { startListener() },
                     onStop = { stopService(Intent(this, ListenerService::class.java)) },
+                    onPlay = { url -> playUrl(url) },
                 )
             }
         }
@@ -54,10 +58,18 @@ class MainActivity : ComponentActivity() {
     private fun startListener() {
         startForegroundService(Intent(this, ListenerService::class.java))
     }
+
+    private fun playUrl(url: String) {
+        startForegroundService(
+            Intent(this, ListenerService::class.java)
+                .setAction(ListenerService.ACTION_PLAY)
+                .putExtra(ListenerService.EXTRA_URL, url)
+        )
+    }
 }
 
 @Composable
-private fun MainScreen(onStart: () -> Unit, onStop: () -> Unit) {
+private fun MainScreen(onStart: () -> Unit, onStop: () -> Unit, onPlay: (String) -> Unit) {
     val running by ListenerService.running.collectAsStateWithLifecycle()
     val events by EventLog.events.collectAsStateWithLifecycle()
     val notificationPermission = rememberLauncherForActivityResult(
@@ -94,19 +106,20 @@ private fun MainScreen(onStart: () -> Unit, onStop: () -> Unit) {
                     Text(if (running) "Stop" else "Start")
                 }
             }
-            SettingsSection()
+            ServerSettingsSection()
+            OutputsSection()
             HorizontalDivider()
-            EventList(events)
+            EventList(events, onPlay)
         }
     }
 }
 
 @Composable
-private fun SettingsSection() {
+private fun ServerSettingsSection() {
     val context = LocalContext.current
     val saved = remember { Settings.load(context) }
     var serverUrl by remember { mutableStateOf(saved.serverUrl) }
-    var authorization by remember { mutableStateOf(saved.authorization) }
+    var headers by remember { mutableStateOf(saved.headers) }
 
     OutlinedTextField(
         value = serverUrl,
@@ -117,15 +130,15 @@ private fun SettingsSection() {
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedTextField(
-        value = authorization,
-        onValueChange = { authorization = it },
-        label = { Text("Authorization header") },
-        placeholder = { Text("Basic dXNlcjpwYXNz / Bearer tk_...") },
-        singleLine = true,
+        value = headers,
+        onValueChange = { headers = it },
+        label = { Text("Request headers for that server") },
+        placeholder = { Text("Authorization: Basic ...\nCF-Access-Client-Id: ...") },
+        minLines = 2,
         modifier = Modifier.fillMaxWidth(),
     )
     OutlinedButton(onClick = {
-        Settings.save(context, Settings(serverUrl, authorization))
+        Settings.save(context, Settings(serverUrl, headers, Settings.load(context).allowedOutputs))
         EventLog.add("settings saved")
     }) {
         Text("Save")
@@ -133,17 +146,65 @@ private fun SettingsSection() {
 }
 
 @Composable
-private fun EventList(events: List<EventLog.Event>) {
+private fun OutputsSection() {
+    val context = LocalContext.current
+    var allowed by remember { mutableStateOf(Settings.load(context).allowedOutputs) }
+    var connected by remember { mutableStateOf(AudioOutputs.connected(context)) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Auto-play outputs (none checked = always)",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        TextButton(onClick = { connected = AudioOutputs.connected(context) }) {
+            Text("Refresh")
+        }
+    }
+    Column {
+        (connected + allowed.filter { it !in connected }).forEach { key ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = key in allowed,
+                    onCheckedChange = { checked ->
+                        allowed = if (checked) allowed + key else allowed - key
+                        Settings.saveAllowedOutputs(context, allowed)
+                    },
+                )
+                Text(
+                    text = AudioOutputs.label(key) + if (key in connected) "" else " (disconnected)",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventList(events: List<EventLog.Event>, onPlay: (String) -> Unit) {
     val timeFormat = SimpleDateFormat("MM-dd HH:mm:ss", Locale.US)
     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(events) { event ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = if (event.url != null) {
+                    Modifier.fillMaxWidth().clickable { onPlay(event.url) }
+                } else {
+                    Modifier.fillMaxWidth()
+                },
+            ) {
                 Text(
                     text = timeFormat.format(Date(event.time)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
-                Text(text = event.text, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = (if (event.url != null) "▶ " else "") + event.text,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }
