@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,11 +47,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                MainScreen(
-                    onStart = { startListener() },
-                    onStop = { stopService(Intent(this, ListenerService::class.java)) },
-                    onPlay = { url -> playUrl(url) },
-                )
+                var showSettings by remember { mutableStateOf(false) }
+                if (showSettings) {
+                    SettingsScreen(onBack = { showSettings = false })
+                } else {
+                    MainScreen(
+                        onStart = { startListener() },
+                        onStop = { stopService(Intent(this, ListenerService::class.java)) },
+                        onPlay = { url -> playUrl(url) },
+                        onOpenSettings = { showSettings = true },
+                    )
+                }
             }
         }
     }
@@ -69,7 +76,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun MainScreen(onStart: () -> Unit, onStop: () -> Unit, onPlay: (String) -> Unit) {
+private fun MainScreen(
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+    onPlay: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     val running by ListenerService.running.collectAsStateWithLifecycle()
     val events by EventLog.events.collectAsStateWithLifecycle()
     val notificationPermission = rememberLauncherForActivityResult(
@@ -90,26 +102,59 @@ private fun MainScreen(onStart: () -> Unit, onStop: () -> Unit, onPlay: (String)
                     text = if (running) "Listening" else "Stopped",
                     style = MaterialTheme.typography.headlineSmall,
                 )
-                val context = LocalContext.current
-                Button(onClick = {
-                    if (running) {
-                        onStop()
-                    } else if (
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                        == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        onStart()
-                    } else {
-                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onOpenSettings) {
+                        Text("Settings")
                     }
-                }) {
-                    Text(if (running) "Stop" else "Start")
+                    val context = LocalContext.current
+                    Button(onClick = {
+                        if (running) {
+                            onStop()
+                        } else if (
+                            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                            == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            onStart()
+                        } else {
+                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }) {
+                        Text(if (running) "Stop" else "Start")
+                    }
+                }
+            }
+            HorizontalDivider()
+            EventList(events, onPlay)
+        }
+    }
+}
+
+@Composable
+private fun SettingsScreen(onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                TextButton(onClick = onBack) {
+                    Text("Back")
                 }
             }
             ServerSettingsSection()
             OutputsSection()
-            HorizontalDivider()
-            EventList(events, onPlay)
         }
     }
 }
