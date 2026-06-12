@@ -14,7 +14,7 @@ object EventLog {
     private const val MAX_EVENTS = 100
     private const val FILE_NAME = "event_log.json"
 
-    data class Event(val time: Long, val text: String, val url: String? = null)
+    data class Event(val time: Long, val text: String, val url: String? = null, val message: String? = null)
 
     private val mutableEvents = MutableStateFlow<List<Event>>(emptyList())
     val events: StateFlow<List<Event>> = mutableEvents
@@ -28,9 +28,9 @@ object EventLog {
         mutableEvents.value = load()
     }
 
-    fun add(text: String, url: String? = null) {
+    fun add(text: String, url: String? = null, message: String? = null) {
         mutableEvents.value =
-            (listOf(Event(System.currentTimeMillis(), text, url)) + mutableEvents.value).take(MAX_EVENTS)
+            (listOf(Event(System.currentTimeMillis(), text, url, message)) + mutableEvents.value).take(MAX_EVENTS)
         persist(mutableEvents.value)
     }
 
@@ -44,6 +44,7 @@ object EventLog {
                 time = obj.getLong("time"),
                 text = obj.getString("text"),
                 url = if (obj.has("url")) obj.getString("url") else null,
+                message = if (obj.has("message")) obj.getString("message") else null,
             )
         }
     } catch (e: Exception) {
@@ -59,6 +60,7 @@ object EventLog {
                         .put("time", event.time)
                         .put("text", event.text)
                         .putOpt("url", event.url)
+                        .putOpt("message", event.message)
                 )
             }
             file.writeText(array.toString())

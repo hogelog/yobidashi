@@ -47,20 +47,23 @@ class ListenerService : Service() {
             val name = intent.getStringExtra("attachment_name") ?: ""
             val type = intent.getStringExtra("attachment_type") ?: ""
             val url = intent.getStringExtra("attachment_url")
+            // The ntfy message body is the human-readable text the sender wrote;
+            // keep it verbatim alongside the original attachment URL.
+            val message = intent.getStringExtra("message")
             if (url.isNullOrEmpty()) {
-                EventLog.add("$topic: no attachment, ignored")
+                EventLog.add("$topic: no attachment, ignored", message = message)
                 return
             }
             if (!type.startsWith("audio/") && name.substringAfterLast('.').lowercase() !in AUDIO_EXTENSIONS) {
-                EventLog.add("$topic: $name is not audio, ignored")
+                EventLog.add("$topic: $name is not audio, ignored", message = message)
                 return
             }
             val settings = Settings.load(context)
             if (!AudioOutputs.autoPlayAllowed(context, settings.allowedOutputs)) {
-                EventLog.add("$topic: $name (no allowed output, tap to play)", url)
+                EventLog.add("$topic: $name (no allowed output, tap to play)", url, message)
                 return
             }
-            EventLog.add("$topic: playing $name", url)
+            EventLog.add("$topic: playing $name", url, message)
             play(url)
         }
     }
