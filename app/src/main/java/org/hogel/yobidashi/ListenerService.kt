@@ -38,6 +38,7 @@ class ListenerService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var player: MediaPlayer? = null
+    private var leadIn: MediaPlayer? = null
     private var playRequest = 0
 
     private val receiver = object : BroadcastReceiver() {
@@ -115,15 +116,10 @@ class ListenerService : Service() {
 
     private fun startPlayer(file: File) {
         player = MediaPlayer().apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
+            setAudioAttributes(audioAttributes())
             setWakeMode(this@ListenerService, PowerManager.PARTIAL_WAKE_LOCK)
             setDataSource(file.path)
-            setOnPreparedListener { it.start() }
+            setOnPreparedListener { startWithLeadIn(it) }
             setOnCompletionListener { stopPlayer() }
             setOnErrorListener { _, what, extra ->
                 EventLog.add("playback error ($what, $extra)")
@@ -134,7 +130,35 @@ class ListenerService : Service() {
         }
     }
 
+    // Plays a short silent clip first so the audio route (Bluetooth in
+    // particular) is already open when the real audio starts; otherwise its
+    // first moments get dropped while the route spins up.
+    private fun startWithLeadIn(real: MediaPlayer) {
+        val silence = MediaPlayer.create(this, R.raw.silence, audioAttributes(), real.audioSessionId)
+        if (silence == null) {
+            real.start()
+            return
+        }
+        leadIn = silence
+        silence.setOnCompletionListener {
+            it.release()
+            leadIn = null
+            if (player === real) {
+                real.start()
+            }
+        }
+        silence.start()
+    }
+
+    private fun audioAttributes(): AudioAttributes =
+        AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
     private fun stopPlayer() {
+        leadIn?.release()
+        leadIn = null
         player?.release()
         player = null
     }
