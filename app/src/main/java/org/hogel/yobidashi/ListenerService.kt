@@ -70,7 +70,7 @@ class ListenerService : Service() {
         startForeground(
             NOTIFICATION_ID,
             buildNotification(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
         )
         registerReceiver(receiver, IntentFilter(NTFY_MESSAGE_RECEIVED), RECEIVER_EXPORTED)
         mutableRunning.value = true

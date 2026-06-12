@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     MainScreen(
                         onStart = { startListener() },
-                        onStop = { stopService(Intent(this, ListenerService::class.java)) },
+                        onStop = { stopListener() },
                         onPlay = { url -> playUrl(url) },
                         onOpenSettings = { showSettings = true },
                     )
@@ -63,7 +63,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startListener() {
+        Settings.saveListenerEnabled(this, true)
         startForegroundService(Intent(this, ListenerService::class.java))
+    }
+
+    private fun stopListener() {
+        Settings.saveListenerEnabled(this, false)
+        stopService(Intent(this, ListenerService::class.java))
     }
 
     private fun playUrl(url: String) {
