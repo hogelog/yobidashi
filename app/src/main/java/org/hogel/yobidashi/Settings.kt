@@ -40,6 +40,16 @@ data class Settings(
                 .apply()
         }
 
+        fun listenerEnabled(context: Context): Boolean =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("listener_enabled", false)
+
+        fun saveListenerEnabled(context: Context, enabled: Boolean) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("listener_enabled", enabled)
+                .apply()
+        }
+
         fun saveAllowedOutputs(context: Context, allowedOutputs: Set<String>) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putStringSet("allowed_outputs", allowedOutputs.toSet())
