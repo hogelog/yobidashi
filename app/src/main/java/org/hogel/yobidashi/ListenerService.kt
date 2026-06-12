@@ -130,9 +130,10 @@ class ListenerService : Service() {
         }
     }
 
-    // Plays a short silent clip first so the audio route (Bluetooth in
-    // particular) is already open when the real audio starts; otherwise its
-    // first moments get dropped while the route spins up.
+    // Plays a 2s near-silent clip (-60dBFS noise, not digital zeros) first so
+    // the audio route is open when the real audio starts. Bluetooth outputs
+    // can take over a second to spin up, and some gate their amp on an actual
+    // signal, so pure zeros would not wake them.
     private fun startWithLeadIn(real: MediaPlayer) {
         val silence = MediaPlayer.create(this, R.raw.silence, audioAttributes(), real.audioSessionId)
         if (silence == null) {
