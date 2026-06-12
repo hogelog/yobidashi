@@ -252,10 +252,19 @@ private fun EventList(events: List<EventLog.Event>, onPlay: (String) -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )
-                Text(
-                    text = (if (event.url != null) "▶ " else "") + event.text,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = (if (event.url != null) "▶ " else "") + event.text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
+                    if (event.message != null) {
+                        Text(
+                            text = event.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
             }
         }
     }
